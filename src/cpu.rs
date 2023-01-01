@@ -6,6 +6,8 @@ const CARRY_FLAG_BYTE_POSITION: u8 = 4;
 
 pub struct Cpu {
     pub registers: [u8; 8],
+    sp: u16,
+    pc: u16,
 }
 
 impl Cpu {
