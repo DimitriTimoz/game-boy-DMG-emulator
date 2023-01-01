@@ -14,6 +14,8 @@ impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
             registers: [0; 8],
+            sp: 0,
+            pc: 0,
         }
     }
 
