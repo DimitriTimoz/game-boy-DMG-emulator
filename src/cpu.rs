@@ -61,13 +61,13 @@ impl Registers {
         }
     }
 
-    pub fn get_register_word(&self, a: usize, b: usize) -> u16 {
-        self.registers[a] as u16 + ((self.registers[b] as u16) << 8)
+    pub fn get_register_word(&self, codes: (usize, usize)) -> u16 {
+        self.registers[codes.0] as u16 + ((self.registers[codes.1] as u16) << 8)
     }
 
-    pub fn set_register_word(&mut self, a: usize, b: usize, value: u16) {
-        self.registers[a] = value as u8;
-        self.registers[b] = (value >> 8) as u8;
+    pub fn set_register_word(&mut self, codes: (usize, usize), value: u16) {
+        self.registers[codes.0] = value as u8;
+        self.registers[codes.1] = (value >> 8) as u8;
     }
 
     pub fn get_register(&self, register: usize) -> u8 {
@@ -87,6 +87,33 @@ impl Registers {
     }
 }
 
+pub trait ToRegisterCode {
+    fn codes(&self) -> (usize, usize);
+    fn code(&self) -> usize {
+        Self::codes(self).0
+    }
+}
+
+impl ToRegisterCode for &str {
+    fn codes(&self) -> (usize, usize) {
+        match self.to_lowercase().as_str() {
+            "af" => (0, 1),
+            "bc" => (2, 3),
+            "de" => (4, 5),
+            "hl" => (6, 7),
+            _ => panic!("Unknown register code"),
+        }
+    }
+}
+
+
+enum PcIncrement {
+    Increment,
+    IncrementWord,
+    Decrement,
+    None,
+    Set(u16),
+}
 
 pub struct Cpu {
     registers: Registers,
