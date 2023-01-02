@@ -18,29 +18,6 @@ impl MemoryBus {
 
 }
 
-struct Registers {
-    registers: [u8; 8],
-}
-
-impl Registers {
-    pub fn new() -> Registers {
-        Registers {
-            registers: [0; 8],
-        }
-    }
-
-    pub fn get_register_word(&self, a: u8, b: u8) -> u16 {
-        self.registers[a as usize] as u16 + ((self.registers[b as usize] as u16) << 8)
-    }
-
-    pub fn set_register_word(&mut self, a: u8, b: u8, value: u16) {
-        self.registers[a as usize] = value as u8;
-        self.registers[b as usize] = (value >> 8) as u8;
-    }
-}
-
-
-
 struct FlagsRegister {
     pub zero: bool,
     pub subtraction: bool,
@@ -72,6 +49,44 @@ impl std::convert::From<u8> for FlagsRegister {
         }
     }
 }
+
+struct Registers {
+    registers: [u8; 8],
+}
+
+impl Registers {
+    pub fn new() -> Registers {
+        Registers {
+            registers: [0; 8],
+        }
+    }
+
+    pub fn get_register_word(&self, a: usize, b: usize) -> u16 {
+        self.registers[a] as u16 + ((self.registers[b] as u16) << 8)
+    }
+
+    pub fn set_register_word(&mut self, a: usize, b: usize, value: u16) {
+        self.registers[a] = value as u8;
+        self.registers[b] = (value >> 8) as u8;
+    }
+
+    pub fn get_register(&self, register: usize) -> u8 {
+        self.registers[register]
+    }
+
+    pub fn set_register(&mut self, register: usize, value: u8) {
+        self.registers[register] = value;
+    }
+
+    pub fn get_flags(&self) -> FlagsRegister {
+        FlagsRegister::from(self.registers[0xF])
+    }
+
+    pub fn set_flags(&mut self, flags: FlagsRegister) {
+        self.registers[0xF] = u8::from(flags);
+    }
+}
+
 
 pub struct Cpu {
     registers: Registers,
