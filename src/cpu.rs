@@ -1,3 +1,5 @@
+use std::fmt::{Formatter, Display};
+
 
 const ZERO_FLAG_BYTE_POSITION: u8 = 7;
 const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
@@ -18,6 +20,7 @@ impl MemoryBus {
 
 }
 
+#[derive(Debug)]
 struct FlagsRegister {
     pub zero: bool,
     pub subtraction: bool,
@@ -54,6 +57,19 @@ struct Registers {
     registers: [u8; 8],
 }
 
+impl Display for Registers {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut output = String::new();
+        output.push_str("Registers:");
+        output.push_str(&format!(" AF: {:04X}\n", self.get_register_word("af".codes())));
+        output.push_str(&format!(" BC: {:04X}\n", self.get_register_word("bc".codes())));
+        output.push_str(&format!(" DE: {:04X}\n", self.get_register_word("de".codes())));
+        output.push_str(&format!(" HL: {:04X}\n", self.get_register_word("hl".codes())));
+        output.push_str(&format!(" Flags: {:?}\n", self.get_flags()));
+        write!(f, "{}", output)
+    }
+}
+
 impl Registers {
     pub fn new() -> Registers {
         Registers {
@@ -82,7 +98,14 @@ impl Registers {
         FlagsRegister::from(self.registers[0xF])
     }
 
-    pub fn set_flags(&mut self, flags: FlagsRegister) {
+    pub fn set_flags(&mut self, zero: Option<bool>, subtraction: Option<bool>, half_carry: Option<bool>, carry: Option<bool>) {
+        let c_flag = self.get_flags();
+        let flags = FlagsRegister {
+            zero: zero.unwrap_or(c_flag.zero),
+            subtraction: subtraction.unwrap_or(c_flag.subtraction),
+            half_carry: half_carry.unwrap_or(c_flag.half_carry),
+            carry: carry.unwrap_or(c_flag.carry),
+        };
         self.registers[0xF] = u8::from(flags);
     }
 }
@@ -106,20 +129,12 @@ impl ToRegisterCode for &str {
     }
 }
 
-
-enum PcIncrement {
-    Increment,
-    IncrementWord,
-    Decrement,
-    None,
-    Set(u16),
-}
-
 pub struct Cpu {
     registers: Registers,
     sp: u16,
     pc: u16,
     ram: MemoryBus,
+    dump_registers_after: Option<u8>,
 }
 
 impl Cpu {
@@ -129,6 +144,62 @@ impl Cpu {
             sp: 0,
             pc: 0,
             ram: MemoryBus::new(),
+            dump_registers_after: None,
+        }
+    }
+
+    fn fetch_byte(&mut self) -> u8 {
+        let byte = self.ram.memory[self.pc as usize];
+        byte
+    }
+
+    fn fetch_word(&mut self) -> u16 {
+        let byte = self.fetch_byte();
+        let word = byte as u16 + ((self.ram.memory[self.pc as usize + 1] as u16) << 8);
+        word
+    }
+
+    fn inc_reg_byte(&mut self, register: usize) {
+        let value = self.registers.get_register(register);
+        let (result, carry) = value.overflowing_add(1);
+        self.registers.set_register(register, result);
+        self.registers.set_flags(Some(result == 0), Some(false), Some(carry), None);
+    }
+
+    fn dec_reg_byte(&mut self, register: usize) {
+        let value = self.registers.get_register(register);
+        let (result, carry) = value.overflowing_sub(1);
+        self.registers.set_register(register, result);
+        self.registers.set_flags(Some(result == 0), Some(true), Some(carry), None);
+    }
+
+    pub fn execute(&mut self) {
+        let opcode = self.ram.memory[self.pc as usize];
+        let increment = match opcode & 0xFF {
+            0x00 => 1,
+            0x01 => { let nn = self.fetch_word(); self.registers.set_register_word("bc".codes(), nn); 3 },
+            0x02 => { let v = self.registers.get_register_word("bc".codes()); self.ram.memory[v as usize] = self.registers.get_register("a".code()); 1 },
+            0x03 => { let v = self.registers.get_register_word("bc".codes()); self.registers.set_register_word("bc".codes(), v.wrapping_add(1)); 1 },
+            0x04 => { self.inc_reg_byte("b".code()); 1},
+            0x05 => { self.dec_reg_byte("b".code()); 1},
+            0x06 => { let v = self.fetch_byte(); self.registers.set_register("b".code(), v); 2 },
+            0x07 => todo!("RLCA"),
+            0x08 => { let nn = self.fetch_word(); self.sp = (nn & 0xFF) as u16 + (nn as u16) << 8;  3},
+            _=> {
+                println!("Unknown opcode: {:X}", opcode);
+                panic!("Unknown opcode");
+            }
+        };
+
+        self.sp.overflowing_add(increment);
+        if self.dump_registers_after.is_some() {
+            if self.dump_registers_after.unwrap() == opcode {
+                
+                println!("Registers: {}", self.registers.to_string());
+                println!("SP: {:X}", self.sp);
+                println!("PC: {:X}", self.pc);
+                println!("Opcode: {:X}", opcode);
+            }
         }
     }
 }
