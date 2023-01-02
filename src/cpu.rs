@@ -11,13 +11,15 @@ struct MemoryBus {
 }
 
 impl MemoryBus {
-
     pub fn new() -> MemoryBus {
         MemoryBus {
             memory: [0; 0xFFFF + 1],
         }
     }
 
+    pub fn set_range(&mut self, start: usize, len: usize, values: &[u8]) {
+       self.memory[start..(start + len) as usize].copy_from_slice(values);
+    }
 }
 
 #[derive(Debug)]
@@ -148,6 +150,12 @@ impl Cpu {
         }
     }
 
+    pub fn load_rom(&mut self, rom_in: Vec<u8>) {
+        let mut rom = [0; 0x3FFF + 1];
+        rom.copy_from_slice(&rom_in);
+        self.ram.set_range(0x0000, 0x3FFF + 1, &rom);
+    }
+
     fn fetch_byte(&mut self) -> u8 {
         let byte = self.ram.memory[self.pc as usize];
         byte
@@ -191,7 +199,7 @@ impl Cpu {
             }
         };
 
-        self.sp.overflowing_add(increment);
+        self.sp = self.sp.wrapping_add(increment);
         if self.dump_registers_after.is_some() {
             if self.dump_registers_after.unwrap() == opcode {
                 
