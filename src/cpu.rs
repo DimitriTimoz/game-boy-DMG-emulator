@@ -105,3 +105,41 @@ impl Cpu {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_flags_register() {
+        let flags = FlagsRegister {
+            zero: true,
+            subtraction: true,
+            half_carry: true,
+            carry: true,
+        };
+
+        let byte = u8::from(flags);
+
+        assert_eq!(byte, 0b1111_0000);
+
+        let flags = FlagsRegister::from(byte);
+
+        assert_eq!(flags.zero, true);
+        assert_eq!(flags.subtraction, true);
+        assert_eq!(flags.half_carry, true);
+        assert_eq!(flags.carry, true);
+
+
+        let flags = FlagsRegister {
+            zero: false,
+            subtraction: false,
+            half_carry: false,
+            carry: false,
+        };
+
+        let byte = u8::from(flags);
+
+        assert_eq!(byte, 0b0000_0000);
+    }
+}
