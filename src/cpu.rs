@@ -4,25 +4,41 @@ const SUBTRACT_FLAG_BYTE_POSITION: u8 = 6;
 const HALF_CARRY_FLAG_BYTE_POSITION: u8 = 5;
 const CARRY_FLAG_BYTE_POSITION: u8 = 4;
 
-pub struct Cpu {
-    pub registers: [u8; 8],
-    sp: u16,
-    pc: u16,
+struct MemoryBus {
+    memory: [u8; 0xFFFF + 1],
 }
 
-impl Cpu {
-    pub fn new() -> Cpu {
-        Cpu {
-            registers: [0; 8],
-            sp: 0,
-            pc: 0,
+impl MemoryBus {
+
+    pub fn new() -> MemoryBus {
+        MemoryBus {
+            memory: [0; 0xFFFF + 1],
         }
     }
 
-    pub fn get_register_u16(&self, a: u8, b: u8) -> u16 {
+}
+
+struct Registers {
+    registers: [u8; 8],
+}
+
+impl Registers {
+    pub fn new() -> Registers {
+        Registers {
+            registers: [0; 8],
+        }
+    }
+
+    pub fn get_register_word(&self, a: u8, b: u8) -> u16 {
         self.registers[a as usize] as u16 + ((self.registers[b as usize] as u16) << 8)
     }
+
+    pub fn set_register_word(&mut self, a: u8, b: u8, value: u16) {
+        self.registers[a as usize] = value as u8;
+        self.registers[b as usize] = (value >> 8) as u8;
+    }
 }
+
 
 
 struct FlagsRegister {
@@ -53,6 +69,24 @@ impl std::convert::From<u8> for FlagsRegister {
             subtraction,
             half_carry,
             carry
+        }
+    }
+}
+
+pub struct Cpu {
+    registers: Registers,
+    sp: u16,
+    pc: u16,
+    ram: MemoryBus,
+}
+
+impl Cpu {
+    pub fn new() -> Cpu {
+        Cpu {
+            registers: Registers::new(),
+            sp: 0,
+            pc: 0,
+            ram: MemoryBus::new(),
         }
     }
 }
